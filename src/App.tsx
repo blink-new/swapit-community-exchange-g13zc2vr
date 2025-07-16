@@ -2,14 +2,23 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { HomePage } from '@/pages/HomePage'
+import { BrowsePage } from '@/pages/BrowsePage'
+import { AddItemPage } from '@/pages/AddItemPage'
+import { ItemDetailsPage } from '@/pages/ItemDetailsPage'
+import { MessagesPage } from '@/pages/MessagesPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { Toaster } from '@/components/ui/toaster'
 import { blink } from '@/blink/client'
 import type { User } from '@/types'
+
+type AppView = 'home' | 'browse' | 'add' | 'messages' | 'profile' | 'item-details'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('home')
+  const [currentView, setCurrentView] = useState<AppView>('home')
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
@@ -31,18 +40,57 @@ function App() {
   }, [])
 
   const handleAddItem = () => {
+    setCurrentView('add')
     setActiveTab('add')
-    // TODO: Navigate to add item page
   }
 
   const handleViewItem = (itemId: string) => {
-    console.log('View item:', itemId)
-    // TODO: Navigate to item details page
+    setSelectedItemId(itemId)
+    setCurrentView('item-details')
   }
 
   const handleSearch = (query: string) => {
     console.log('Search:', query)
-    // TODO: Implement search functionality
+    setCurrentView('browse')
+    setActiveTab('browse')
+  }
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    switch (tab) {
+      case 'home':
+        setCurrentView('home')
+        break
+      case 'browse':
+        setCurrentView('browse')
+        break
+      case 'add':
+        setCurrentView('add')
+        break
+      case 'messages':
+        setCurrentView('messages')
+        break
+      case 'profile':
+        setCurrentView('profile')
+        break
+    }
+  }
+
+  const handleBack = () => {
+    setCurrentView('home')
+    setActiveTab('home')
+    setSelectedItemId(null)
+  }
+
+  const handleItemAdded = () => {
+    setCurrentView('home')
+    setActiveTab('home')
+  }
+
+  const handleStartMessage = (userId: string) => {
+    console.log('Start message with user:', userId)
+    setCurrentView('messages')
+    setActiveTab('messages')
   }
 
   if (loading) {
@@ -77,45 +125,52 @@ function App() {
     )
   }
 
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'home':
+        return <HomePage onAddItem={handleAddItem} onViewItem={handleViewItem} />
+      case 'browse':
+        return <BrowsePage onViewItem={handleViewItem} />
+      case 'add':
+        return <AddItemPage onBack={handleBack} onItemAdded={handleItemAdded} />
+      case 'item-details':
+        return selectedItemId ? (
+          <ItemDetailsPage 
+            itemId={selectedItemId} 
+            onBack={handleBack} 
+            onStartMessage={handleStartMessage}
+          />
+        ) : null
+      case 'messages':
+        return <MessagesPage onBack={handleBack} />
+      case 'profile':
+        return <ProfilePage onBack={handleBack} onViewItem={handleViewItem} />
+      default:
+        return <HomePage onAddItem={handleAddItem} onViewItem={handleViewItem} />
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <Header onSearch={handleSearch} />
+      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && (
+        <Header onSearch={handleSearch} />
+      )}
       
-      <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
-        {activeTab === 'home' && (
-          <HomePage onAddItem={handleAddItem} onViewItem={handleViewItem} />
-        )}
-        {activeTab === 'browse' && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Browse Items</h2>
-            <p className="text-muted-foreground">Browse page coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'add' && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Add Item</h2>
-            <p className="text-muted-foreground">Add item page coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'messages' && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Messages</h2>
-            <p className="text-muted-foreground">Messages page coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'profile' && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Profile</h2>
-            <p className="text-muted-foreground">Profile page coming soon...</p>
-          </div>
-        )}
+      <main className={`container mx-auto px-4 ${
+        currentView === 'add' || currentView === 'item-details' || currentView === 'messages' || currentView === 'profile' 
+          ? 'py-8' 
+          : 'py-8 pb-20 md:pb-8'
+      }`}>
+        {renderCurrentView()}
       </main>
 
-      <BottomNav 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab}
-        messageCount={2}
-      />
+      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && (
+        <BottomNav 
+          activeTab={activeTab} 
+          onTabChange={handleTabChange}
+          messageCount={2}
+        />
+      )}
       
       <Toaster />
     </div>
