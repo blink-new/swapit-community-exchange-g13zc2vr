@@ -10,9 +10,10 @@ import type { User } from '@/types'
 
 interface HeaderProps {
   onSearch?: (query: string) => void
+  onNotifications?: () => void
 }
 
-export function Header({ onSearch }: HeaderProps) {
+export function Header({ onSearch, onNotifications }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [notificationCount, setNotificationCount] = useState(3)
@@ -109,7 +110,7 @@ export function Header({ onSearch }: HeaderProps) {
                   </Badge>
                 )}
               </Button>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative" onClick={onNotifications}>
                 <Bell className="h-5 w-5" />
                 {notificationCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">

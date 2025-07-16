@@ -3,15 +3,18 @@ import { Header } from '@/components/layout/Header'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { HomePage } from '@/pages/HomePage'
 import { BrowsePage } from '@/pages/BrowsePage'
+import { DiscoverPage } from '@/pages/DiscoverPage'
 import { AddItemPage } from '@/pages/AddItemPage'
 import { ItemDetailsPage } from '@/pages/ItemDetailsPage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { OnboardingPage } from '@/pages/OnboardingPage'
+import { NotificationsPage } from '@/pages/NotificationsPage'
 import { Toaster } from '@/components/ui/toaster'
 import { blink } from '@/blink/client'
 import type { User } from '@/types'
 
-type AppView = 'home' | 'browse' | 'add' | 'messages' | 'profile' | 'item-details'
+type AppView = 'home' | 'browse' | 'discover' | 'add' | 'messages' | 'profile' | 'item-details' | 'onboarding' | 'notifications'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -23,16 +26,22 @@ function App() {
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
       if (state.user) {
-        setUser({
+        const userData = {
           id: state.user.id,
           email: state.user.email || '',
           displayName: state.user.displayName || 'User',
           avatar: state.user.avatar,
-          onboardingCompleted: true,
-          role: 'user',
+          onboardingCompleted: false, // Set to false to trigger onboarding
+          role: 'user' as const,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
-        })
+        }
+        setUser(userData)
+        
+        // Check if user needs onboarding
+        if (!userData.onboardingCompleted) {
+          setCurrentView('onboarding')
+        }
       }
       setLoading(state.isLoading)
     })
@@ -64,6 +73,9 @@ function App() {
       case 'browse':
         setCurrentView('browse')
         break
+      case 'discover':
+        setCurrentView('discover')
+        break
       case 'add':
         setCurrentView('add')
         break
@@ -91,6 +103,28 @@ function App() {
     console.log('Start message with user:', userId)
     setCurrentView('messages')
     setActiveTab('messages')
+  }
+
+  const handleOnboardingComplete = () => {
+    if (user) {
+      setUser({ ...user, onboardingCompleted: true })
+    }
+    setCurrentView('home')
+    setActiveTab('home')
+  }
+
+  const handleNavigateToNotifications = () => {
+    setCurrentView('notifications')
+  }
+
+  const handleNavigateFromNotifications = (page: string, itemId?: string) => {
+    if (page === 'item-details' && itemId) {
+      setSelectedItemId(itemId)
+      setCurrentView('item-details')
+    } else if (page === 'messages') {
+      setCurrentView('messages')
+      setActiveTab('messages')
+    }
   }
 
   if (loading) {
@@ -127,10 +161,14 @@ function App() {
 
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'onboarding':
+        return <OnboardingPage onComplete={handleOnboardingComplete} />
       case 'home':
         return <HomePage onAddItem={handleAddItem} onViewItem={handleViewItem} />
       case 'browse':
         return <BrowsePage onViewItem={handleViewItem} />
+      case 'discover':
+        return <DiscoverPage onViewItem={handleViewItem} />
       case 'add':
         return <AddItemPage onBack={handleBack} onItemAdded={handleItemAdded} />
       case 'item-details':
@@ -145,26 +183,38 @@ function App() {
         return <MessagesPage onBack={handleBack} />
       case 'profile':
         return <ProfilePage onBack={handleBack} onViewItem={handleViewItem} />
+      case 'notifications':
+        return <NotificationsPage onBack={handleBack} onNavigate={handleNavigateFromNotifications} />
       default:
         return <HomePage onAddItem={handleAddItem} onViewItem={handleViewItem} />
     }
   }
 
+  // Don't render main layout during onboarding
+  if (currentView === 'onboarding') {
+    return (
+      <>
+        {renderCurrentView()}
+        <Toaster />
+      </>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && (
-        <Header onSearch={handleSearch} />
+      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && currentView !== 'notifications' && (
+        <Header onSearch={handleSearch} onNotifications={handleNavigateToNotifications} />
       )}
       
       <main className={`container mx-auto px-4 ${
-        currentView === 'add' || currentView === 'item-details' || currentView === 'messages' || currentView === 'profile' 
+        currentView === 'add' || currentView === 'item-details' || currentView === 'messages' || currentView === 'profile' || currentView === 'notifications'
           ? 'py-8' 
           : 'py-8 pb-20 md:pb-8'
       }`}>
         {renderCurrentView()}
       </main>
 
-      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && (
+      {currentView !== 'add' && currentView !== 'item-details' && currentView !== 'messages' && currentView !== 'profile' && currentView !== 'notifications' && (
         <BottomNav 
           activeTab={activeTab} 
           onTabChange={handleTabChange}
